@@ -1,7 +1,9 @@
 name: Build APK
-on: [push]
+on: [push, pull_request]
+
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build:
     runs-on: ubuntu-22.04
@@ -11,21 +13,27 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
+          
       - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential libffi-dev python3-dev
+          pip install --upgrade pip
           pip install buildozer cython==0.29.33
-      - name: Accept Licenses
+          
+      - name: Accept Android Licenses
         run: |
+          mkdir -p ~/.android
+          touch ~/.android/repositories.cfg
           yes | sdkmanager --licenses || true
+          
       - name: Build with Buildozer
         run: |
-          # 빌드 캐시를 삭제하고 깨끗한 상태에서 다시 빌드합니다.
-          buildozer android clean
+          # 'clean' 없이 바로 빌드를 시작하여 경로 오류를 방지합니다.
           yes | buildozer android debug
+          
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: PristonTale_Final_APK
+          name: PristonTale_APK
           path: bin/*.apk
