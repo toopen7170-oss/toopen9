@@ -2,23 +2,27 @@ name: Build APK
 on: [push, pull_request]
 jobs:
   build:
-    runs-on: ubuntu-22.04  # 서버를 조금 더 안정적인 버전으로 내립니다.
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10' # 파이썬을 3.10으로 고정합니다.
+          python-version: '3.10'
       - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential libffi-dev python3-dev
           pip install --upgrade pip
           pip install buildozer cython==0.29.33
+      - name: Accept Android Licenses
+        run: |
+          # 이 부분이 라이선스 오류를 해결하는 핵심 명령어입니다.
+          yes | sdkmanager --licenses || true
       - name: Build with Buildozer
         run: buildozer android debug
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: PT1_APK
+          name: PristonTale_APK
           path: bin/*.apk
