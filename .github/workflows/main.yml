@@ -17,7 +17,7 @@ jobs:
           pip install buildozer cython==0.29.33
       - name: Accept Android Licenses
         run: |
-          # 이 부분이 라이선스 오류를 해결하는 핵심 명령어입니다.
+          # 서버 환경변수와 자동 응답 기능을 사용하여 라이선스 문제를 해결합니다.
           yes | sdkmanager --licenses || true
       - name: Build with Buildozer
         run: buildozer android debug

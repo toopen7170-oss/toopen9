@@ -11,7 +11,7 @@ fullscreen = 1
 android.archs = arm64-v8a
 android.api = 31
 android.minapi = 21
-# 라이선스 문제가 적은 안정적인 빌드 도구 버전을 사용합니다.
+# 라이선스 오류가 적은 안정적인 빌드 도구 버전을 명시합니다.
 android.build_tools_version = 33.0.0
 android.ndk = 25b
 android.permissions = READ_EXTERNAL_STORAGE, WRITE_EXTERNAL_STORAGE, INTERNET
