@@ -1,5 +1,5 @@
 name: Build APK
-on: [push, pull_request]
+on: [push]
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 jobs:
@@ -16,18 +16,16 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
-      - name: Install dependencies
+      - name: Install Build Tools
         run: |
           pip install --upgrade pip
           pip install buildozer cython==0.29.33
-      - name: Accept Android Licenses
+      - name: Accept Licenses
         run: yes | sdkmanager --licenses || true
-      - name: Build with Buildozer
-        run: |
-          # 절대 경로 에러를 방지하기 위해 clean 없이 바로 빌드합니다.
-          yes | buildozer android debug
-      - name: Upload APK
+      - name: Build APK (FREE ONLY)
+        run: yes | buildozer android debug
+      - name: Upload Result
         uses: actions/upload-artifact@v4
         with:
-          name: PristonTale_Final_APK
+          name: PT1_Manager_Build
           path: bin/*.apk

@@ -1,44 +1,57 @@
-import os
 from kivy.app import App
-from kivy.uix.floatlayout import FloatLayout
-from kivy.uix.image import Image
+from kivy.uix.screenmanager import ScreenManager, Screen
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.button import Button
+from kivy.uix.textinput import TextInput
 from kivy.uix.label import Label
-from kivy.core.text import LabelBase
+from kivy.uix.scrollview import ScrollView
+from kivy.uix.gridlayout import GridLayout
+from kivy.core.window import Window
 
-# 폰트 파일 존재 여부를 확인하고 등록합니다.
-font_path = 'font.ttf'
-if os.path.exists(font_path):
-    LabelBase.register(name='CustomFont', fn_regular=font_path)
-    DEFAULT_FONT = 'CustomFont'
-else:
-    DEFAULT_FONT = 'Roboto' # 폰트 없을 시 기본 폰트로 대체하는 안전장치
+# 화면 배경 및 기본 설정
+Window.clearcolor = (0.1, 0.1, 0.1, 1)
 
-class PristonTaleApp(App):
+class MainScreen(Screen):
+    """ 전체 검색 및 계정 목록 화면 """
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        layout = BoxLayout(orientation='vertical', padding=10, spacing=10)
+        
+        # 전체 검색바
+        search_layout = BoxLayout(size_hint_y=0.1, spacing=5)
+        self.search_input = TextInput(hint_text='계정, 캐릭터, 장비 등 검색...', multiline=False)
+        search_btn = Button(text='검색', size_hint_x=0.2, background_color=(0, 0.5, 1, 1))
+        search_layout.add_widget(self.search_input)
+        search_layout.add_widget(search_btn)
+        
+        layout.add_widget(search_layout)
+        
+        # 계정 목록 영역
+        scroll = ScrollView()
+        self.acc_list = GridLayout(cols=1, spacing=10, size_hint_y=None)
+        self.acc_list.bind(minimum_height=self.acc_list.setter('height'))
+        scroll.add_widget(self.acc_list)
+        layout.add_widget(scroll)
+        
+        # 하단 계정 추가 버튼
+        add_acc_btn = Button(text='계정 추가 (+)', size_hint_y=0.1, background_color=(0, 0.7, 0, 1))
+        layout.add_widget(add_acc_btn)
+        
+        self.add_widget(layout)
+
+class CharSelectScreen(Screen):
+    """ 계정 클릭 시 나타나는 6개 캐릭터 창 """
+    pass
+
+class DetailScreen(Screen):
+    """ 캐릭터 세부 정보 및 인벤토리 """
+    pass
+
+class PT1Manager(App):
     def build(self):
-        # 레이아웃을 FloatLayout으로 변경하여 이미지를 겹치게(배경처럼) 만듭니다.
-        root = FloatLayout()
-        
-        # 1. 배경 이미지 (화면 전체 꽉 차게)
-        bg = Image(source='bg.png', allow_stretch=True, keep_ratio=False)
-        root.add_widget(bg)
-        
-        # 2. 내부 삽입 이미지 (화면 중앙 상단 배치)
-        if os.path.exists('images.jpeg'):
-            inner_img = Image(source='images.jpeg', 
-                              size_hint=(0.8, 0.4),
-                              pos_hint={'center_x': 0.5, 'top': 0.8})
-            root.add_widget(inner_img)
-        
-        # 3. 텍스트 라벨 (하단 배치, 폰트 적용)
-        txt = Label(text='PristonTale Mobile\nReady for Service', 
-                    font_name=DEFAULT_FONT, 
-                    font_size='22sp',
-                    color=(1, 1, 0, 1), # 황금색으로 변경 (가독성 향상)
-                    size_hint=(1, 0.2),
-                    pos_hint={'center_x': 0.5, 'y': 0.1})
-        root.add_widget(txt)
-        
-        return root
+        sm = ScreenManager()
+        sm.add_widget(MainScreen(name='main'))
+        return sm
 
 if __name__ == '__main__':
-    PristonTaleApp().run()
+    PT1Manager().run()
