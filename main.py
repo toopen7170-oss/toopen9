@@ -9,22 +9,28 @@ LabelBase.register(name='CustomFont', fn_regular='font.ttf')
 
 class PristonTaleApp(App):
     def build(self):
-        layout = BoxLayout(orientation='vertical')
+        # 전체를 담는 레이아웃
+        layout = BoxLayout(orientation='vertical', spacing=10, padding=10)
         
-        # 배경 이미지 (bg.png)
-        bg = Image(source='bg.png', allow_stretch=True, keep_ratio=False)
+        # 1. 배경 이미지 (새로 추가하신 bg1.png)
+        bg = Image(source='bg1.png', allow_stretch=True, keep_ratio=False, size_hint=(1, 0.4))
         
-        # 내부 이미지 (images.jpeg)
-        inner_img = Image(source='images.jpeg', size_hint=(1, 0.5))
+        # 2. 중간 이미지 레이아웃 (images1, images2를 가로로 배치)
+        mid_layout = BoxLayout(orientation='horizontal', spacing=10, size_hint=(1, 0.4))
+        img1 = Image(source='images1.jpg')
+        img2 = Image(source='images2.jpg')
+        mid_layout.add_widget(img1)
+        mid_layout.add_widget(img2)
         
-        # 폰트 적용된 라벨
-        txt = Label(text='PristonTale Mobile\n빌드 테스트 중', 
+        # 3. 폰트 적용된 하단 문구
+        txt = Label(text='PristonTale Mobile\n[ 이미지/폰트 업데이트 완료 ]', 
                     font_name='CustomFont', 
-                    font_size='24sp',
+                    font_size='22sp',
+                    halign='center',
                     size_hint=(1, 0.2))
 
         layout.add_widget(bg)
-        layout.add_widget(inner_img)
+        layout.add_widget(mid_layout)
         layout.add_widget(txt)
         return layout
 
