@@ -1,14 +1,8 @@
 #!/bin/bash
-# 1. 혹시 빠진 파일이 있다면 자동으로 추가
 git add .
-
-# 2. 커밋 (변경사항 기록)
 current_time=$(date "+%Y-%m-%d %H:%M:%S")
-git commit -m "자동 빌드 요청: $current_time"
-
-# 3. 깃허브로 전송 (이제 아이디/비밀번호 안 물어봄!)
+git commit -m "무료 빌드 요청: $current_time"
 git push origin main
-
 echo "------------------------------------------"
-echo "자동 로그인 성공! 깃허브에서 빌드가 시작되었습니다."
+echo "전송 완료! 깃허브 Actions에서 무료 빌드가 진행됩니다."
 echo "------------------------------------------"
