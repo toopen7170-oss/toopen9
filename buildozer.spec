@@ -1,5 +1,5 @@
 [app]
-title = PT1Manager
+title = PristonTale
 package.name = pt1manager
 package.domain = org.toopen7170
 source.dir = .
