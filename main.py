@@ -1,38 +1,32 @@
-import os
-import sys
-import traceback
-from plyer import share
 from kivy.app import App
-from kivy.lang import Builder
-from kivy.uix.screenmanager import ScreenManager, Screen
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.image import Image
+from kivy.uix.label import Label
+from kivy.core.text import LabelBase
 
-def logger(type, value, tb):
-    log_content = "".join(traceback.format_exception(type, value, tb))
-    temp_path = os.path.join(os.path.dirname(__file__), "error_log.txt")
-    with open(temp_path, "w", encoding='utf-8') as f:
-        f.write("--- PT1 Manager Error Log ---\n" + log_content)
-    try: share.share(temp_path)
-    except: pass
-sys.excepthook = logger
+# 폰트 등록
+LabelBase.register(name='CustomFont', fn_regular='font.ttf')
 
-KV = '''
-ScreenManager:
-    MainScreen:
-<MainScreen>:
-    name: 'main'
-    BoxLayout:
-        orientation: 'vertical'
-        canvas.before:
-            Color:
-                rgba: 0.1, 0.1, 0.1, 1
-            Rectangle:
-                pos: self.pos
-                size: self.size
-        Label:
-            text: 'PT1 Manager (준비완료)'
-            font_size: 30
-'''
-class MainScreen(Screen): pass
-class PT1ManagerApp(App):
-    def build(self): return Builder.load_string(KV)
-if __name__ == '__main__': PT1ManagerApp().run()
+class PristonTaleApp(App):
+    def build(self):
+        layout = BoxLayout(orientation='vertical')
+        
+        # 배경 이미지 (bg.png)
+        bg = Image(source='bg.png', allow_stretch=True, keep_ratio=False)
+        
+        # 내부 이미지 (images.jpeg)
+        inner_img = Image(source='images.jpeg', size_hint=(1, 0.5))
+        
+        # 폰트 적용된 라벨
+        txt = Label(text='PristonTale Mobile\n빌드 테스트 중', 
+                    font_name='CustomFont', 
+                    font_size='24sp',
+                    size_hint=(1, 0.2))
+
+        layout.add_widget(bg)
+        layout.add_widget(inner_img)
+        layout.add_widget(txt)
+        return layout
+
+if __name__ == '__main__':
+    PristonTaleApp().run()
