@@ -4,7 +4,7 @@ package.name = pt1manager
 package.domain = org.toopen7170
 source.dir = .
 # 모든 이미지와 폰트 확장자를 포함하도록 수정했습니다. (검수 완료)
-source.include_exts = py,png,jpg,jpeg,ttf,json
+source.include_exts = py,png,jpg,jpeg,ttf
 version = 0.3
 requirements = python3,kivy==2.3.0,plyer,android,cython==0.29.33
 orientation = portrait
