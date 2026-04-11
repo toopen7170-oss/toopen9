@@ -12,140 +12,135 @@ from kivy.storage.jsonstore import JsonStore
 from kivy.uix.popup import Popup
 from kivy.core.window import Window
 from kivy.config import Config
-from kivy.clock import Clock
 
-# --- [1단계: 폰트 및 설정] ---
+# --- [1단계: 폰트 등록 및 기본 설정] ---
 FONT_FILE = "font.ttf"
-DF = None # Default Font
+DF = "KFont" if os.path.exists(FONT_FILE) else None
+if DF:
+    LabelBase.register(name=DF, fn_regular=FONT_FILE)
+    Config.set('kivy', 'default_font', [DF, FONT_FILE, FONT_FILE, FONT_FILE])
 
-#: 폰트가 깨지지 않도록 등록합니다.
-try:
-    if os.path.exists(FONT_FILE):
-        LabelBase.register(name="KFont", fn_regular=FONT_FILE)
-        DF = "KFont"
-        Config.set('kivy', 'default_font', ['KFont', FONT_FILE, FONT_FILE, FONT_FILE, FONT_FILE])
-except: pass
-
-# 🛠️ [핵심 수정 1:]: 키보드가 올라올 때 입력을 가리지 않도록 설정합니다.
 Window.softinput_mode = "below_target"
-
-# 데이터 저장소
 store = JsonStore('priston_tale_data.json')
 
-class SInput(TextInput):
-    """ 커스텀 입력창: 폰트 자동 적용 및 크기 최적화 """
-    def __init__(self, **kw):
-        super().__init__(**kw)
-        if DF: self.font_name = DF
-        self.size_hint_y = None
-        self.height = 110 #의 팝업 크기에 맞춰 최적화
-
 class SBtn(Button):
-    """ 커스텀 버튼: 폰트 자동 적용 및 크기 최적화 """
     def __init__(self, **kw):
         super().__init__(**kw)
         if DF: self.font_name = DF
         self.size_hint_y = None
         self.height = 140
 
-# --- [2단계: 화면 구성] ---
+class SLabel(Label):
+    def __init__(self, **kw):
+        super().__init__(**kw)
+        if DF: self.font_name = DF
+
+# --- [2단계: 메인 메뉴 - 계정 삭제 및 검색] ---
 class MainMenu(Screen):
     def on_enter(self): self.refresh()
     def __init__(self, **kw):
         super().__init__(**kw)
         layout = BoxLayout(orientation='vertical', padding=10, spacing=10)
+        layout.add_widget(SLabel(text="[PT1 통합 검색]", font_size='22sp', size_hint_y=0.1))
         
-        # 제목
-        lbl = Label(text="[PT1 통합 검색]", font_size='22sp', size_hint_y=0.1)
-        if DF: lbl.font_name = DF
-        layout.add_widget(lbl)
-        
-        # 검색바
         s_box = BoxLayout(size_hint_y=None, height=120, spacing=5)
-        self.stti = SInput(hint_text="계정, 캐릭터, 장비 검색...", multiline=False)
+        self.stti = TextInput(hint_text="검색어 입력...", multiline=False)
+        if DF: self.stti.font_name = DF
         s_btn = Button(text="검색", size_hint_x=0.25, background_color=(0.2, 0.6, 1, 1))
         if DF: s_btn.font_name = DF
         s_btn.bind(on_release=self.refresh)
         s_box.add_widget(self.stti); s_box.add_widget(s_btn); layout.add_widget(s_box)
 
-        # 새 계정 만들기 버튼
         add_btn = SBtn(text="+ 새 계정 만들기", background_color=(0.1, 0.7, 0.3, 1))
         add_btn.bind(on_release=self.add_pop)
         layout.add_widget(add_btn)
 
-        # 계정 목록 (스크롤)
         self.grid = GridLayout(cols=1, spacing=10, size_hint_y=None)
         self.grid.bind(minimum_height=self.grid.setter('height'))
         scroll = ScrollView(); scroll.add_widget(self.grid); layout.add_widget(scroll)
-        
         self.add_widget(layout)
 
     def refresh(self, *a):
-        """ 목록 갱신 및 계정 이동 기능 복구 """
         self.grid.clear_widgets()
         q = self.stti.text.strip().lower()
         for k in list(store.keys()):
             if not q or q in k.lower():
                 row = BoxLayout(size_hint_y=None, height=140, spacing=5)
-                # 🛠️ [핵심 수정 2:]: 버튼 클릭 시 'go_acc' 함수를 호출하도록 수정합니다.
                 acc_btn = SBtn(text=f"계정: {k}", size_hint_x=0.8, background_color=(0.1, 0.2, 0.4, 1))
                 acc_btn.bind(on_release=lambda x, name=k: self.go_acc(name))
                 
+                # 🛠️ 삭제 확인 기능 연결
                 del_btn = Button(text="X", size_hint_x=0.2, background_color=(0.8, 0.2, 0.2, 1))
                 if DF: del_btn.font_name = DF
+                del_btn.bind(on_release=lambda x, name=k: self.confirm_del(name))
+                
                 row.add_widget(acc_btn); row.add_widget(del_btn); self.grid.add_widget(row)
 
+    # 🛠️ 멘트 팝업 추가
+    def confirm_del(self, name):
+        c = BoxLayout(orientation='vertical', padding=15, spacing=15)
+        c.add_widget(SLabel(text=f"'{name}'\n삭제하시겠습니까?"))
+        btns = BoxLayout(size_hint_y=0.4, spacing=10)
+        y_btn = Button(text="삭제", background_color=(0.8, 0, 0, 1))
+        n_btn = Button(text="취소")
+        if DF: y_btn.font_name = DF; n_btn.font_name = DF
+        btns.add_widget(y_btn); btns.add_widget(n_btn); c.add_widget(btns)
+        
+        pop = Popup(title="확인", content=c, size_hint=(0.8, 0.4))
+        y_btn.bind(on_release=lambda x: [store.delete(name), self.refresh(), pop.dismiss()])
+        n_btn.bind(on_release=pop.dismiss); pop.open()
+
     def go_acc(self, name):
-        """: 캐릭터 선택 화면으로 이동합니다. """
         self.manager.current_acc = name
         self.manager.current = 'char_select'
 
     def add_pop(self, *a):
-        """: 계정 추가 팝업의 폰트와 크기를 수정합니다. """
-        content = BoxLayout(orientation='vertical', padding=15, spacing=15)
-        
-        # 🛠️ [핵심 수정 3:]: 팝업의 라벨에도 폰트를 적용합니다.
-        title_lbl = Label(text="새 계정 추가", size_hint_y=0.2, font_size='18sp')
-        if DF: title_lbl.font_name = DF
-        content.add_widget(title_lbl)
-        
-        self.acc_input = SInput(hint_text="계정 이름 입력")
-        content.add_widget(self.acc_input)
-        
-        btn = SBtn(text="생성", background_color=(0.1, 0.7, 0.3, 1))
-        content.add_widget(btn)
-        
-        # 🛠️ [핵심 수정 4:]: 팝업 크기를 최적화하여 키보드 가림을 방지합니다.
-        self.pop = Popup(title="", content=content, size_hint=(0.85, 0.5), separator_height=0)
-        btn.bind(on_release=self.create_acc)
-        self.pop.open()
+        c = BoxLayout(orientation='vertical', padding=10, spacing=10)
+        ti = TextInput(hint_text="계정 이름", multiline=False)
+        if DF: ti.font_name = DF
+        b = SBtn(text="생성", background_color=(0.1, 0.7, 0.3, 1))
+        c.add_widget(ti); c.add_widget(b)
+        p = Popup(title="추가", content=c, size_hint=(0.8, 0.4))
+        b.bind(on_release=lambda x: [store.put(ti.text, chars={str(i): {"이름": f"캐릭터 {i}", "레벨": "1"} for i in range(1, 7)}), p.dismiss(), self.refresh()])
+        p.open()
 
-    def create_acc(self, *a):
-        name = self.acc_input.text.strip()
-        if name and not store.exists(name):
-            store.put(name, chars={str(i): {"이름": f"슬롯 {i}"} for i in range(1, 7)})
-            self.pop.dismiss()
-            self.refresh()
-
+# --- [3단계: 캐릭터 선택 화면 - 6개 슬롯 구현] ---
 class CharSelect(Screen):
-    """ 캐릭터 선택 화면 (계정 클릭 시 이동) """
     def on_enter(self):
         self.clear_widgets()
         acc = self.manager.current_acc
-        layout = BoxLayout(orientation='vertical', padding=10)
-        lbl = Label(text=f"[{acc}] 캐릭터 선택", size_hint_y=0.1, font_size='20sp')
-        if DF: lbl.font_name = DF
-        layout.add_widget(lbl)
-        # (여기에 6개 캐릭터 슬롯 구현 예정)
-        back_btn = SBtn(text="뒤로가기")
-        back_btn.bind(on_release=lambda x: setattr(self.manager, 'current', 'main'))
-        layout.add_widget(back_btn)
+        data = store.get(acc)
+        
+        layout = BoxLayout(orientation='vertical', padding=10, spacing=10)
+        layout.add_widget(SLabel(text=f"[{acc}] 캐릭터 선택", size_hint_y=0.1, font_size='20sp'))
+        
+        # 🛠️ 그리드 생성
+        grid = GridLayout(cols=2, spacing=15, size_hint_y=0.8)
+        chars = data.get('chars', {})
+        
+        for i in range(1, 7):
+            char_info = chars.get(str(i), {"이름": f"빈 캐릭터 {i}", "레벨": "0"})
+            btn = SBtn(text=f"{char_info['이름']}\nLv.{char_info['레벨']}", halign='center')
+            btn.bind(on_release=lambda x, slot=i: self.go_detail(slot))
+            grid.add_widget(btn)
+        
+        layout.add_widget(grid)
+        
+        back = SBtn(text="뒤로가기", size_hint_y=0.1, background_color=(0.5, 0.5, 0.5, 1))
+        back.bind(on_release=lambda x: setattr(self.manager, 'current', 'main'))
+        layout.add_widget(back)
         self.add_widget(layout)
+
+    def go_detail(self, slot):
+        self.manager.current_slot = slot
+        # 상세 페이지 이동 로직 (추후 구현)
+        print(f"Slot {slot} 클릭됨")
 
 class PristonApp(App):
     def build(self):
         sm = ScreenManager(transition=FadeTransition())
         sm.current_acc = ""
+        sm.current_slot = 0
         sm.add_widget(MainMenu(name='main'))
         sm.add_widget(CharSelect(name='char_select'))
         return sm
