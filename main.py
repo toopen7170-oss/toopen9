@@ -12,27 +12,28 @@ from kivy.uix.popup import Popup
 from kivy.storage.jsonstore import JsonStore
 from kivy.clock import Clock
 
-#
-FONT_PATH = "font.ttf"
-FONT_NAME = "KoreanFont"
-if os.path.exists(FONT_PATH):
-    LabelBase.register(name=FONT_NAME, fn_regular=FONT_PATH)
-else:
-    FONT_NAME = "Roboto"
+# [보완] 폰트 로딩 방식 수정: 파일이 없으면 아예 무시해서 튕김 방지
+FONT_NAME = "Roboto" # 기본값
+if os.path.exists("font.ttf"):
+    try:
+        LabelBase.register(name="KFont", fn_regular="font.ttf")
+        FONT_NAME = "KFont"
+    except:
+        pass
 
-store = JsonStore('pt1_data.json')
-
-class SLabel(Label):
-    def __init__(self, **kw):
-        super().__init__(**kw)
-        self.font_name = FONT_NAME
+store = JsonStore('pt1_save_data.json')
 
 class SBtn(Button):
     def __init__(self, **kw):
         super().__init__(**kw)
         self.font_name = FONT_NAME
         self.size_hint_y = None
-        self.height = 100
+        self.height = 120
+
+class SLabel(Label):
+    def __init__(self, **kw):
+        super().__init__(**kw)
+        self.font_name = FONT_NAME
 
 class CharDetail(Screen):
     def on_enter(self):
@@ -40,113 +41,87 @@ class CharDetail(Screen):
 
     def refresh_ui(self):
         self.clear_widgets()
-        acc = self.manager.current_acc
-        slot = self.manager.current_slot
-        self.data = store.get(acc)['chars'].get(slot, {"items": [], "photos": []})
+        acc = getattr(self.manager, 'current_acc', 'Default')
+        slot = getattr(self.manager, 'current_slot', '1')
         
-        main_layout = BoxLayout(orientation='vertical', padding=10, spacing=10)
+        # 데이터 안전하게 가져오기
+        if not store.exists(acc): store.put(acc, chars={})
+        acc_data = store.get(acc)
+        char_data = acc_data.get('chars', {}).get(slot, {"items": []})
+
+        layout = BoxLayout(orientation='vertical', padding=10, spacing=10)
+        layout.add_widget(SLabel(text=f"[{acc}] 캐릭터 {slot} 상세내용", size_hint_y=0.1))
+
+        # 인벤토리 무한 줄 추가 영역
+        self.scroll = ScrollView()
+        self.grid = GridLayout(cols=1, spacing=10, size_hint_y=None)
+        self.grid.bind(minimum_height=self.grid.setter('height'))
         
-        # 1. 인벤토리 영역 (무한 줄 추가)
-        main_layout.add_widget(SLabel(text="[인벤토리]", size_hint_y=0.05))
-        self.item_scroll = ScrollView(size_hint_y=0.4)
-        self.item_grid = GridLayout(cols=1, spacing=5, size_hint_y=None)
-        self.item_grid.bind(minimum_height=self.item_grid.setter('height'))
-        
-        for idx, item_text in enumerate(self.data.get('items', [])):
-            self.add_item_row(idx, item_text)
+        for idx, text in enumerate(char_data.get('items', [])):
+            row = BoxLayout(size_hint_y=None, height=120, spacing=5)
+            ti = TextInput(text=text, font_name=FONT_NAME, multiline=False, padding_y=[20, 10])
+            s_b = Button(text="저장", size_hint_x=0.2, font_name=FONT_NAME)
+            d_b = Button(text="삭제", size_hint_x=0.2, font_name=FONT_NAME, background_color=(1,0,0,1))
             
-        self.item_scroll.add_widget(self.item_grid)
-        main_layout.add_widget(self.item_scroll)
-        
-        add_item_btn = SBtn(text="+ 인벤토리 줄 추가", background_color=(0, 0.7, 0.3, 1))
-        add_item_btn.bind(on_release=self.append_new_item)
-        main_layout.add_widget(add_item_btn)
-
-        # 2. 사진 영역 (여러 장 관리)
-        main_layout.add_widget(SLabel(text="[캐릭터 사진]", size_hint_y=0.05))
-        self.photo_scroll = ScrollView(size_hint_y=0.2)
-        self.photo_grid = GridLayout(rows=1, spacing=10, size_hint_x=None)
-        self.photo_grid.bind(minimum_width=self.photo_grid.setter('width'))
-        
-        for p_path in self.data.get('photos', []):
-            p_btn = Button(text="사진", size_hint=(None, None), size=(150, 150))
-            p_btn.bind(on_release=lambda x, p=p_path: self.confirm_delete_photo(p))
-            self.photo_grid.add_widget(p_btn)
+            s_b.bind(on_release=lambda x, i=idx, t=ti: self.save_item(acc, slot, i, t.text))
+            d_b.bind(on_release=lambda x, i=idx: self.confirm_del(acc, slot, i))
             
-        self.photo_scroll.add_widget(self.photo_grid)
-        main_layout.add_widget(self.photo_scroll)
+            row.add_widget(ti); row.add_widget(s_b); row.add_widget(d_b)
+            self.grid.add_widget(row)
 
-        p_controls = BoxLayout(size_hint_y=0.1, spacing=5)
-        p_add = SBtn(text="사진 추가", background_color=(0.2, 0.5, 0.8, 1))
-        p_add.bind(on_release=self.ask_photo_permission)
-        p_controls.add_widget(p_add)
-        main_layout.add_widget(p_controls)
+        self.scroll.add_widget(self.grid)
+        layout.add_widget(self.scroll)
 
-        # 하단 메뉴
-        back_btn = SBtn(text="뒤로가기", height=120)
-        back_btn.bind(on_release=lambda x: setattr(self.manager, 'current', 'char_select'))
-        main_layout.add_widget(back_btn)
-        
-        self.add_widget(main_layout)
+        # 하단 버튼들
+        add_b = SBtn(text="+ 인벤토리 줄 추가", background_color=(0, 0.7, 0.3, 1))
+        add_b.bind(on_release=lambda x: self.add_row(acc, slot))
+        layout.add_widget(add_b)
 
-    def add_item_row(self, idx, text):
-        row = BoxLayout(size_hint_y=None, height=100, spacing=5)
-        ti = TextInput(text=text, font_name=FONT_NAME, multiline=False)
-        s_btn = Button(text="저장", size_hint_x=0.2, font_name=FONT_NAME)
-        d_btn = Button(text="삭제", size_hint_x=0.2, font_name=FONT_NAME, background_color=(0.8, 0.2, 0.2, 1))
-        
-        s_btn.bind(on_release=lambda x: self.save_single_item(idx, ti.text))
-        d_btn.bind(on_release=lambda x: self.confirm_delete_item(idx))
-        
-        row.add_widget(ti); row.add_widget(s_btn); row.add_widget(d_btn)
-        self.item_grid.add_widget(row)
+        back = SBtn(text="뒤로가기", background_color=(0.5, 0.5, 0.5, 1))
+        back.bind(on_release=lambda x: setattr(self.manager, 'current', 'main'))
+        layout.add_widget(back)
 
-    def append_new_item(self, *a):
-        self.data['items'].append("")
-        self.update_store()
+        self.add_widget(layout)
+
+    def add_row(self, acc, slot):
+        data = store.get(acc)
+        if slot not in data['chars']: data['chars'][slot] = {"items": []}
+        data['chars'][slot]['items'].append("")
+        store.put(acc, **data)
         self.refresh_ui()
-        Clock.schedule_once(lambda dt: setattr(self.item_scroll, 'scroll_y', 0), 0.1) #
+        Clock.schedule_once(lambda dt: setattr(self.scroll, 'scroll_y', 0), 0.1)
 
-    def save_single_item(self, idx, text):
-        self.data['items'][idx] = text
-        self.update_store()
+    def save_item(self, acc, slot, idx, text):
+        data = store.get(acc)
+        data['chars'][slot]['items'][idx] = text
+        store.put(acc, **data)
         Popup(title="알림", content=SLabel(text="저장되었습니다."), size_hint=(0.6, 0.2)).open()
 
-    def confirm_delete_item(self, idx):
-        self.show_confirm("줄을 삭제하시겠습니까?", lambda: self.delete_item(idx))
+    def confirm_del(self, acc, slot, idx):
+        c = BoxLayout(orientation='vertical', padding=10)
+        c.add_widget(SLabel(text="정말 삭제하시겠습니까?"))
+        b = SBtn(text="삭제하기", background_color=(1,0,0,1))
+        pop = Popup(title="확인", content=c, size_hint=(0.7, 0.3))
+        def do_del(x):
+            data = store.get(acc)
+            data['chars'][slot]['items'].pop(idx)
+            store.put(acc, **data)
+            self.refresh_ui(); pop.dismiss()
+        b.bind(on_release=do_del); c.add_widget(b); pop.open()
 
-    def delete_item(self, idx):
-        self.data['items'].pop(idx)
-        self.update_store()
-        self.refresh_ui()
-
-    def ask_photo_permission(self, *a):
-        self.show_confirm("갤러리 접근을 허용하시겠습니까?", self.refresh_ui)
-
-    def confirm_delete_photo(self, path):
-        self.show_confirm("사진을 삭제하시겠습니까?", self.refresh_ui)
-
-    def show_confirm(self, msg, yes_func):
-        c = BoxLayout(orientation='vertical', padding=10, spacing=10)
-        c.add_widget(SLabel(text=msg))
-        btns = BoxLayout(size_hint_y=0.4, spacing=10)
-        y = SBtn(text="확인"); n = SBtn(text="취소")
-        btns.add_widget(y); btns.add_widget(n); c.add_widget(btns)
-        pop = Popup(title="확인", content=c, size_hint=(0.8, 0.4))
-        y.bind(on_release=lambda x: [yes_func(), pop.dismiss()])
-        n.bind(on_release=pop.dismiss); pop.open()
-
-    def update_store(self):
-        acc = self.manager.current_acc
-        slot = self.manager.current_slot
-        all_data = store.get(acc)
-        all_data['chars'][slot] = self.data
-        store.put(acc, **all_data)
+class MainMenu(Screen):
+    def __init__(self, **kw):
+        super().__init__(**kw)
+        l = BoxLayout(orientation='vertical', padding=20)
+        l.add_widget(SLabel(text="PT1 Manager 실행 성공", font_size='20sp'))
+        btn = SBtn(text="캐릭터 관리 시작", background_color=(0.2, 0.5, 0.8, 1))
+        btn.bind(on_release=lambda x: setattr(self.manager, 'current', 'char_detail'))
+        l.add_widget(btn); self.add_widget(l)
 
 class PT1App(App):
     def build(self):
         sm = ScreenManager(transition=FadeTransition())
-        # (MainMenu, CharSelect 클래스는 이전과 동일하므로 생략하거나 기존 코드 유지)
+        sm.add_widget(MainMenu(name='main'))
         sm.add_widget(CharDetail(name='char_detail'))
         return sm
 

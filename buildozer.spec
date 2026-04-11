@@ -14,7 +14,7 @@ android.api = 31
 android.minapi = 21
 android.build_tools_version = 33.0.0
 android.ndk = 25b
-android.permissions = READ_EXTERNAL_STORAGE, WRITE_EXTERNAL_STORAGE, INTERNET
+android.permissions = INTERNET,WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE
 p4a.branch = master
 
 [buildozer]
